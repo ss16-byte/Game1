@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Orbital Guard | Mission Active</title>
+    <style>
+        body { margin: 0; background: #050505; color: #00d4ff; font-family: 'Courier New', monospace; overflow: hidden; }
+        canvas { display: block; }
+        #ui { position: absolute; top: 20px; left: 20px; pointer-events: none; }
+        .stat { font-size: 20px; margin-bottom: 5px; text-shadow: 0 0 10px #00d4ff; }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div class="stat">INTEGRITY: <span id="hp">100</span>%</div>
+        <div class="stat">DEBRIS DEFLECTED: <span id="score">0</span></div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const hpEl = document.getElementById('hp');
+const scoreEl = document.getElementById('score');
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let hp = 100;
+let score = 0;
+let particles = [];
+let debris = [];
+
+// The "Satellite" (Your Mission Hub)
+const player = {
+    x: canvas.width / 2,
+    y: canvas.height / 2,
+    radius: 40,
+    shieldRadius: 70
+};
+
+// Mouse tracking
+let mouseX = player.x;
+let mouseY = player.y;
+window.addEventListener('mousemove', (e) => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+});
+
+class Debris {
+    constructor() {
+        this.reset();
+    }
+    reset() {
+        const side = Math.floor(Math.random() * 4);
+        if(side === 0) { this.x = Math.random() * canvas.width; this.y = -20; }
+        if(side === 1) { this.x = canvas.width + 20; this.y = Math.random() * canvas.height; }
+        if(side === 2) { this.x = Math.random() * canvas.width; this.y = canvas.height + 20; }
+        if(side === 3) { this.x = -20; this.y = Math.random() * canvas.height; }
+        
+        const angle = Math.atan2(player.y - this.y, player.x - this.x);
+        const speed = 2 + Math.random() * 3;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        this.radius = 5 + Math.random() * 10;
+    }
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+
+        // MATH CHECK: Distance Formula (Square Root of sum of squares)
+        const dx = this.x - player.x;
+        const dy = this.y - player.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+
+        // Shield Collision
+        const shieldDx = this.x - mouseX;
+        const shieldDy = this.y - mouseY;
+        const shieldDist = Math.sqrt(shieldDx*shieldDx + shieldDy*shieldDy);
+
+        if (shieldDist < 40) {
+            score += 10;
+            scoreEl.innerText = score;
+            this.reset();
+        }
+
+        // Hull Impact
+        if (dist < player.radius) {
+            hp -= 10;
+            hpEl.innerText = hp;
+            if (hp <= 0) alert("MISSION FAILED. FINAL SCORE: " + score);
+            this.reset();
+        }
+    }
+    draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#ff007a';
+        ctx.fill();
+    }
+}
+
+for(let i=0; i<8; i++) debris.push(new Debris());
+
+function animate() {
+    ctx.fillStyle = 'rgba(5, 5, 5, 0.2)'; // Motion blur effect
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw Satellite
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+    ctx.strokeStyle = '#00d4ff';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Draw Shield (Controlled by User)
+    ctx.beginPath();
+    ctx.arc(mouseX, mouseY, 35, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0, 212, 255, 0.3)';
+    ctx.fill();
+    ctx.strokeStyle = '#00d4ff';
+    ctx.stroke();
+
+    debris.forEach(d => {
+        d.update();
+        d.draw();
+    });
+
+    if (hp > 0) requestAnimationFrame(animate);
+}
+
+animate();
+</script>
+</body>
+</html>
